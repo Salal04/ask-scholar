@@ -1,149 +1,390 @@
-# Ask Scholar — Backend (FastAPI + Supabase Postgres + RAG)
+<div align="center">
 
-A single FastAPI service combining:
+# 🕌 Ask Scholar
 
-- **The Ask Scholar API** — auth, scholar browsing, admin CRUD, the
-  `askQuestion` chat endpoint — backed by Supabase Postgres.
-- **The RAG pipeline** — YouTube/document ingestion, Gemini embeddings,
-  and Pinecone similarity search — mounted under `/api/rag/*` and now also
-  wired directly into the scholar flows (see **Integration** below).
+**Ask a verified religious scholar — get answers grounded in their own videos and writings.**
 
-Previously these were two separate backends; this merges them into one
-codebase and one running process.
+### 🔗 [**Live App → ask-scholar-frontend.vercel.app**](https://ask-scholar-frontend.vercel.app/)
 
-## 1. Create your Supabase project
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://ask-scholar-frontend.vercel.app/)
+[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#-frontend)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#-backend)
+[![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Gemini](https://img.shields.io/badge/AI-Gemini%20%2B%20Pinecone%20RAG-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)](#-rag-pipeline)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](#-license)
 
-1. Go to [supabase.com](https://supabase.com) → New project.
-2. **Database connection string**: Project Settings → Database →
-   "Connection string" → URI. Use the **Transaction pooler** (port `6543`)
-   string for normal use. Copy it into `DATABASE_URL` in your `.env`, but:
-   - change the scheme from `postgresql://` to `postgresql+asyncpg://`
-   - fill in your real database password
-3. **Storage (for scholar profile pictures)**: Storage → New bucket →
-   name it `scholar-pictures` → toggle **Public**. Then copy the
-   **Project URL** and **service_role key** into `SUPABASE_URL` /
-   `SUPABASE_SERVICE_KEY`.
+</div>
 
-If you don't need picture uploads yet, leave the Supabase Storage vars
-unset — everything else works fine.
+---
 
-## 2. (Optional) Set up RAG
+## 📖 About
 
-RAG (video/document ingestion + search) is optional — the API starts and
-runs fine without it, it just no-ops. To enable it:
+**Ask Scholar** is a full-stack platform that connects users with verified
+religious scholars. Users browse scholar profiles, ask questions, and — thanks
+to an integrated **RAG (Retrieval-Augmented Generation)** pipeline — get
+pointed to the *exact timestamp in the scholar's own video* where a related
+answer already exists, instead of a generic AI-generated response.
 
-1. **System dependency**: install `ffmpeg` (required by `yt-dlp`):
-   ```bash
-   sudo apt-get install -y ffmpeg   # Debian/Ubuntu
-   brew install ffmpeg              # macOS
-   ```
-2. Fill in `GEMINI_API_KEY_1/2/3` (up to 3 keys for rotation) and
-   `PINECONE_API_KEY` / `PINECONE_INDEX_NAME` in `.env`. The Pinecone index
-   is auto-created on first use if it doesn't exist.
+> 🚫 **No AI-generated rulings.** The app deliberately never lets an LLM
+> author a religious answer on a scholar's behalf — the AI only retrieves
+> and points to what the scholar themselves has already said. A human
+> scholar always reviews and gives the actual answer.
 
-## 3. Install & run
+**🌐 Try it live:** **[ask-scholar-frontend.vercel.app](https://ask-scholar-frontend.vercel.app/)**
+
+---
+
+## ✨ Features
+
+- 👳 **Browse verified scholars** — filter by fiqah, specialization, languages, experience
+- 💬 **Ask a scholar a question** — get routed to the most relevant video + timestamp via RAG search
+- 🔑 **User & Admin authentication** — JWT-based, separate roles for regular users and platform admins
+- 🛠️ **Admin dashboard** — create/invite/suspend scholars, manage users, link YouTube videos
+- 🎥 **Automatic video ingestion** — linking a video to a scholar transcribes it and embeds it into a searchable knowledge base in the background
+- 📄 **Document ingestion** — reference documents (PDF/DOCX/URL) can be ingested and searched the same way
+- 🖼️ **Scholar profile pictures** via Supabase Storage
+- 📱 **Responsive UI** — works across desktop and mobile
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────┐        ┌──────────────────────────┐
+│   Frontend (React+Vite)  │ ─────▶ │   Backend (FastAPI)       │
+│   ask-scholar-frontend    │  API   │   /api/* on Vercel/Render │
+│   .vercel.app              │◀───── │                            │
+└─────────────────────────┘        └──────────┬───────────────┘
+                                                │
+                        ┌───────────────────────┼───────────────────────┐
+                        ▼                       ▼                       ▼
+                ┌───────────────┐     ┌──────────────────┐    ┌──────────────────┐
+                │   Supabase     │     │  Google Gemini     │    │    Pinecone        │
+                │  (Postgres +   │     │  (transcription,    │    │  (vector search    │
+                │   Storage)     │     │   embeddings)         │    │   for RAG)          │
+                └───────────────┘     └──────────────────┘    └──────────────────┘
+```
+
+The **frontend** is a standalone React/Vite app deployed on Vercel and talks
+to the **backend** purely over its REST API (`VITE_API_BASE_URL`). The
+**backend** is a single FastAPI service that owns auth, the scholar
+directory/admin panel, and the RAG ingestion + search pipeline — all backed
+by Supabase Postgres, Gemini, and Pinecone.
+
+---
+
+## 🖥️ Frontend
+
+Live at **[ask-scholar-frontend.vercel.app](https://ask-scholar-frontend.vercel.app/)**, deployed on Vercel.
+
+It's a React + Vite single-page app that talks to the backend exclusively
+through `VITE_API_BASE_URL` (no direct database/Supabase access from the
+client) — pages for browsing scholars, the ask-a-question chat panel, user
+auth, and an admin dashboard for managing scholars/videos/users.
+
+> This repo/README covers the **backend** in setup detail. If you're working
+> on the frontend, point it at your own backend instance by setting:
+> ```env
+> VITE_API_BASE_URL=http://localhost:5000/api
+> ```
+> and make sure the backend's `FRONTEND_ORIGIN` matches your frontend's URL for CORS.
+
+---
+
+## ⚙️ Backend
+
+A single FastAPI service combining two pieces into one codebase/process:
+
+| Piece | What it does |
+|---|---|
+| 🔐 **Core API** | Auth (users + admins), scholar directory, admin CRUD, `askQuestion` chat endpoint — backed by **Supabase Postgres** via async SQLAlchemy |
+| 🧠 **RAG Engine** | YouTube / document ingestion → Gemini transcription & embeddings → **Pinecone** similarity search, mounted at `/api/rag/*` and wired directly into the scholar Q&A flow |
+
+RAG is fully optional — the API boots and runs fine without any Gemini /
+Pinecone keys, it just no-ops those features.
+
+### Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) |
+| Database | [Supabase](https://supabase.com/) (PostgreSQL) via async [SQLAlchemy 2.0](https://www.sqlalchemy.org/) + `asyncpg` |
+| Auth | `PyJWT` + `passlib[bcrypt]` |
+| Validation | `Pydantic v2` / `pydantic-settings` |
+| File Storage | Supabase Storage (scholar profile pictures) |
+| LLM / Embeddings | Google **Gemini** (`google-genai`) |
+| Vector DB | **Pinecone** |
+| Video/Doc ingestion | `yt-dlp`, `pdfplumber`, `python-docx` |
+
+### Project Structure
+
+```
+app/
+├── main.py                FastAPI app, CORS, error envelope, startup (create tables + seed admin)
+├── config.py               Core settings loaded from .env (pydantic-settings)
+├── database.py              Async SQLAlchemy engine/session (asyncpg, Supabase-pooler friendly)
+├── models.py                 Admin, User, Scholar, Video (SQLAlchemy ORM)
+├── schemas.py                Pydantic request/response models (camelCase, matches frontend)
+├── serializers.py             ORM → Pydantic conversion helpers
+├── security.py                 bcrypt hashing + JWT create/decode
+├── deps.py                      get_current_user / get_current_admin auth dependencies
+├── storage.py                    Uploads scholar pictures to Supabase Storage
+├── seed.py                        Auto-seeds the admin account on startup
+│
+├── routers/
+│   ├── auth.py             POST /auth/user/register, /auth/user/login, /auth/admin/login
+│   ├── scholars.py          GET /scholars, GET /scholars/{id}, POST /scholars/askQuestion/{id}
+│   └── admin.py               Scholar CRUD/invite, video linking, user management (admin-only)
+│
+└── rag/                     RAG subsystem
+    ├── config.py               Env vars, Gemini model fallback chains, chunking/Pinecone settings
+    ├── gemini_manager.py        GeminiKeyManager — key pool + per-task model fallback
+    ├── schemas.py                 Pydantic models for /api/rag/*
+    ├── router.py                   POST /rag/ingest/youtube, /ingest/document/*, /search
+    └── services/
+        ├── youtube_service.py       Download audio → Gemini transcript → cleanup
+        ├── docs_service.py           Fetch/extract document text → cleanup
+        ├── chunking.py                 Plain-text + timestamped-transcript chunking
+        ├── embedding_service.py         Gemini embeddings + Pinecone upsert/query
+        ├── answer_service.py             Builds the grounded askQuestion answer
+        ├── ingest_state.py                 Checkpointing for resumable ingestion
+        └── translation.py                   Answer translation
+```
+
+---
+
+## 🚀 Running the Backend Locally
+
+### Prerequisites
+
+- **Python 3.11+**
+- A **Supabase** project (free tier is fine)
+- `ffmpeg` installed system-wide *(only needed if you enable RAG video ingestion)*
+- **Gemini API key(s)** and a **Pinecone** account *(only needed for RAG)*
+
+### 1️⃣ Set up a virtual environment
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
+
 pip install -r requirements.txt
+```
 
+### 2️⃣ Create your Supabase project
+
+1. Go to [supabase.com](https://supabase.com) → **New project**.
+2. **Database connection string** → Project Settings → Database → *Connection string* → **URI**.
+   Use the **Transaction pooler** (port `6543`) string. Copy it into `DATABASE_URL`, then:
+   - change the scheme from `postgresql://` → `postgresql+asyncpg://`
+   - fill in your real database password
+3. **Storage** (for scholar profile pictures) → Storage → *New bucket* → name it e.g. `scholar-pictures` → toggle **Public**.
+   Then copy the **Project URL** and **service_role key** into `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`.
+
+> Skip picture uploads for now? Leave the Supabase Storage vars unset — everything else still works.
+
+### 3️⃣ Configure environment variables
+
+```bash
 cp .env.example .env
-# edit .env — see sections 1 and 2 above
+```
 
+<details>
+<summary><strong>📋 .env.example (click to expand)</strong></summary>
+
+```env
+# --- Supabase / Database ---
+DATABASE_URL="postgresql+asyncpg://<user>:<password>@<host>:6543/postgres"
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_SERVICE_KEY=<your-supabase-service-role-key>
+SUPABASE_STORAGE_BUCKET=scholar-pictures
+
+# --- Auth ---
+JWT_SECRET="change-this-to-a-long-random-string"
+JWT_ALGORITHM=HS256
+JWT_EXPIRES_MINUTES=10080
+
+# --- CORS ---
+FRONTEND_ORIGIN=http://localhost:5173
+
+# --- Server ---
+PORT=5000
+
+# --- Auto-seeded admin account ---
+ADMIN_NAME="Admin"
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="change-this-password"
+
+# --- RAG: Gemini (optional — up to 3 keys for rotation) ---
+GEMINI_API_KEY_1=
+GEMINI_API_KEY_2=
+GEMINI_API_KEY_3=
+
+# --- RAG: Pinecone (optional) ---
+PINECONE_API_KEY=
+PINECONE_INDEX_NAME=knowledge-base
+PINECONE_CLOUD=aws
+PINECONE_REGION=us-east-1
+EMBEDDING_DIMENSION=768
+
+# --- RAG: retry / backoff tuning (optional) ---
+MAX_RETRIES_PER_KEY_ROUND=6
+RATE_LIMIT_SLEEP_SECS=15
+RATE_LIMIT_BACKOFF=1.6
+
+# --- RAG: chunking (optional) ---
+CHUNK_SIZE_CHARS=1200
+CHUNK_OVERLAP_CHARS=150
+```
+
+</details>
+
+> 🔒 **Never commit your real `.env`.** Keep only `.env.example` (with placeholder values) in version control.
+
+### 4️⃣ (Optional) Enable RAG
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install -y ffmpeg
+
+# macOS
+brew install ffmpeg
+```
+
+Then fill in `GEMINI_API_KEY_1/2/3` and `PINECONE_API_KEY` / `PINECONE_INDEX_NAME` in `.env`.
+The Pinecone index is **auto-created** on first use if it doesn't already exist.
+
+### 5️⃣ Run the server
+
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 ```
 
-On first startup the app creates all tables (via SQLAlchemy
-`metadata.create_all`) and auto-seeds one admin account from
-`ADMIN_NAME`/`ADMIN_EMAIL`/`ADMIN_PASSWORD`.
+On first startup the app will:
+- ✅ create all database tables (`SQLAlchemy metadata.create_all`)
+- ✅ auto-seed one admin account from `ADMIN_NAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD`
 
-The API is served under `/api`, e.g. `http://localhost:5000/api/scholars`,
-matching the frontend's `VITE_API_BASE_URL=http://localhost:5000/api`
-default. Interactive docs: `http://localhost:5000/docs`.
+The API is served under `/api`, e.g. `http://localhost:5000/api/scholars`.
 
-## 4. Point the frontend at it
+📘 Interactive docs (Swagger UI): **http://localhost:5000/docs**
 
-In `frontend/.env`:
-```
+### 6️⃣ Point the frontend at it
+
+```env
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
-And set `FRONTEND_ORIGIN=http://localhost:5173` in the backend's `.env` so
-CORS allows it.
 
-## Project layout
+And set the backend's `FRONTEND_ORIGIN` to your frontend's dev URL (e.g. `http://localhost:5173`) so CORS allows it. The live production frontend at
+[ask-scholar-frontend.vercel.app](https://ask-scholar-frontend.vercel.app/) points at the deployed backend instance instead.
 
-```
-app/
-  main.py          FastAPI app, CORS, error envelope, startup (create tables + seed admin)
-  config.py        Ask Scholar settings loaded from .env (pydantic-settings)
-  database.py      Async SQLAlchemy engine/session (asyncpg, Supabase-pooler friendly)
-  models.py        Admin, User, Scholar, Video (SQLAlchemy)
-  schemas.py       Pydantic request/response models (camelCase, matches frontend)
-  serializers.py   ORM -> Pydantic conversion helpers
-  security.py      bcrypt hashing + JWT create/decode
-  deps.py          get_current_user / get_current_admin auth dependencies
-  storage.py       Uploads scholar pictures to Supabase Storage
-  seed.py          Auto-seeds the admin account
-  routers/
-    auth.py        POST /auth/user/register, /auth/user/login, /auth/admin/login
-    scholars.py    GET /scholars, GET /scholars/{id}, POST /scholars/askQuestion/{id}
-    admin.py       Scholar CRUD/invite, video linking, user management (all admin-only)
-  rag/             The former standalone RAG backend, now a subpackage:
-    config.py        env vars, model fallback chains, chunking/pinecone settings
-    gemini_manager.py  GeminiKeyManager (key pool + per-task model fallback), lazily built
-    schemas.py         pydantic request/response models for /api/rag/*
-    router.py          POST /api/rag/ingest/youtube, /ingest/document/*, /search
-    services/
-      youtube_service.py   download audio -> Gemini transcript -> cleanup
-      docs_service.py      fetch/extract doc text -> cleanup
-      chunking.py          plain-text and timestamped-transcript chunking
-      embedding_service.py Gemini embeddings + Pinecone upsert/query, lazily connected
+---
+
+## 🗺️ Database Migrations
+
+No Alembic setup yet — the schema is kept in sync automatically:
+
+> On every startup, `SQLAlchemy.metadata.create_all()` runs and creates any
+> tables from `app/models.py` that don't already exist in your Supabase
+> database. It does **not** alter existing tables (won't drop columns,
+> change types, etc.), so it's safe to leave running in dev.
+
+**Going to production with schema changes down the line?** Swap this for real, versioned migrations:
+
+```bash
+pip install alembic
+alembic init alembic
+# point alembic.ini / env.py at app.database.Base + settings.database_url
+alembic revision --autogenerate -m "describe your change"
+alembic upgrade head
 ```
 
-## Integration
+Until then, treat `app/models.py` as the single source of truth for the schema — the app creates it for you on boot, no manual SQL needed to get started.
 
-The two pieces aren't just mounted side by side — `askQuestion` and video
-linking now use RAG directly:
+---
 
-- **`POST /api/admin/videos`** (linking a video to a scholar) now also
-  kicks off a **background task** that transcribes the video and stores its
-  embeddings in Pinecone, namespaced by `scholar_id`. This doesn't block
-  the response (transcription can take a while); if it fails or RAG isn't
-  configured, the video link itself is unaffected.
-- **`POST /api/scholars/askQuestion/{id}`** still does **not** auto-generate
-  a religious ruling (per the original design — a human always reviews the
-  real answer). It now additionally does a RAG search scoped to that
-  scholar's namespace for a passage relevant to the question, and if found,
-  points the asker to that specific timestamp in that specific video
-  instead of just "the latest video at 0s". Falls back to the original
-  placeholder behavior if nothing matches or RAG isn't configured.
-- **`/api/rag/*`** (ingest by URL/upload, generic `/search`) is still
-  exposed directly too, for ingesting standalone reference documents/videos
-  that aren't tied to a specific scholar (pass your own `namespace`).
-  Ingestion and search require an admin JWT (`Authorization: Bearer
-  <token>` from `/api/auth/admin/login`) — only `/api/rag/health` is open.
+## 📡 API Reference
 
-## Notes / decisions carried over from both backends
+Base path for everything below: `/api`
 
-- **`Video` model**: not in the original `schema.prisma`, added because the
-  frontend's admin "Add video" tab and the chat panel's YouTube-timestamp
-  link both need somewhere to persist a scholar's linked videos.
-- **Public vs admin scholar visibility**: `GET /scholars` and
-  `GET /scholars/{id}` only return `status=ACTIVE` + `isActive=true`
-  scholars; `PENDING`/`SUSPENDED` scholars stay visible via
-  `GET /admin/scholars`.
-- **Auth**: JWTs carry `{ sub: <id>, role: "USER"|"ADMIN" }`, single
-  `Authorization: Bearer <token>` header. Passwords hashed with bcrypt.
-- **Scholar self-registration via invite token**: schema fields exist
-  (`inviteToken`/`inviteTokenExpiry`), but there's no frontend page to
-  redeem one yet — `POST /scholars/complete-invite` is the natural next
-  endpoint if you add that page.
-- **Tables are created with `create_all` on startup**, not Alembic
-  migrations — swap in Alembic if you need versioned migrations later.
-- **RAG async work**: ingestion (via `/api/rag/ingest/*` or the video-link
-  background task) can take a while — for real production traffic, move it
-  to a proper task queue (Celery/RQ) instead of `BackgroundTasks`.
-- **File size / duration limits**: add guards on audio length and document
-  size to avoid huge Gemini uploads.
+### 🔐 Auth — `/auth`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `POST` | `/auth/user/register` | Register a new user | — |
+| `POST` | `/auth/user/login` | User login → JWT | — |
+| `POST` | `/auth/admin/login` | Admin login → JWT | — |
+
+### 👳 Scholars — `/scholars`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/scholars` | List active/verified scholars (filters, pagination) | — |
+| `GET` | `/scholars/{id}` | Get a single scholar's public profile | — |
+| `POST` | `/scholars/askQuestion/{id}` | Ask a scholar a question — RAG-grounded video/timestamp match | User |
+
+### 🛠️ Admin — `/admin` *(all routes require an admin JWT)*
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/admin/scholars` | Create a scholar |
+| `POST` | `/admin/scholars/invite` | Invite a scholar (sends invite token) |
+| `GET` | `/admin/scholars` | List all scholars (incl. pending/suspended) |
+| `DELETE` | `/admin/scholars/{id}` | Delete a scholar |
+| `PATCH` | `/admin/scholars/{id}/status` | Update scholar status (active/suspended/pending) |
+| `POST` | `/admin/scholars/{id}/resend-invite` | Resend an invite |
+| `POST` | `/admin/videos` | Link a YouTube video to a scholar (kicks off background transcription + embedding) |
+| `POST` | `/admin/documents/upload` | Upload & ingest a reference document |
+| `POST` | `/admin/documents/url` | Ingest a reference document from a URL |
+| `GET` | `/admin/users` | List all users |
+| `DELETE` | `/admin/users/{id}` | Delete a user |
+
+### 🧠 RAG — `/rag`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/rag/health` | RAG subsystem health check | — |
+| `POST` | `/rag/ingest/youtube` | Ingest a standalone YouTube video into a namespace | Admin |
+| `POST` | `/rag/ingest/document/url` | Ingest a document from a URL | Admin |
+| `POST` | `/rag/ingest/document/upload` | Ingest an uploaded document | Admin |
+| `POST` | `/rag/search` | Similarity search over an ingested namespace | Admin |
+
+> All admin/RAG routes expect `Authorization: Bearer <token>` from `/api/auth/admin/login`.
+
+### ❤️ Health
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Service liveness check |
+
+---
+
+## 🔗 How the pieces connect
+
+- **Linking a video** (`POST /admin/videos`) kicks off a **background task**
+  that transcribes the video and stores its embeddings in Pinecone,
+  namespaced by `scholar_id`. This doesn't block the response — if it fails
+  or RAG isn't configured, the video link itself is unaffected.
+- **`askQuestion`** never auto-generates a religious ruling — a human
+  scholar always reviews the real answer — but it does a RAG search scoped
+  to that scholar's namespace, and if a relevant passage is found, points
+  the asker to the specific timestamp in the specific video instead of a
+  generic placeholder.
+- **`/rag/*`** is also exposed directly, for ingesting standalone reference
+  material not tied to a specific scholar (pass your own `namespace`).
+
+---
+
+## 🧠 Design Notes
+
+- **JWT payload**: `{ sub: <id>, role: "USER" | "ADMIN" }`, sent as a single `Authorization: Bearer <token>` header. Passwords hashed with bcrypt.
+- **Public vs admin visibility**: `GET /scholars` and `GET /scholars/{id}` only return `status=ACTIVE` + `isActive=true` scholars; `PENDING`/`SUSPENDED` ones remain visible via `GET /admin/scholars`.
+- **Scholar self-registration via invite token**: schema fields (`inviteToken` / `inviteTokenExpiry`) already exist — `POST /scholars/complete-invite` is the natural next endpoint if a "redeem invite" frontend page gets added.
+- **RAG async work**: ingestion can take a while (long videos/docs) — for real production traffic, swap `BackgroundTasks` for a proper task queue (Celery / RQ).
+- **Gemini model fallback**: model names/availability shift over time — check [ai.google.dev/gemini-api/docs/deprecations](https://ai.google.dev/gemini-api/docs/deprecations) if ingestion suddenly starts failing.
+
+---
+
+## 📄 License
+
+MIT — do whatever you want with it, just don't blame me if a fatwa engine hallucinates. 😄
