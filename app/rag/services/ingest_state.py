@@ -60,7 +60,7 @@ from .. import config
 
 logger = logging.getLogger(__name__)
 
-STATE_PATH = config.BASE_DIR / "ingest_state.json"
+STATE_PATH = config.WRITABLE_DIR / "ingest_state.json"
 
 # Ingestion can run several background tasks concurrently (multiple
 # scholars' videos ingesting at once); guard read-modify-write of the
