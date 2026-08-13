@@ -28,7 +28,7 @@ answer already exists, instead of a generic AI-generated response.
 > 🚫 **No AI-generated rulings.** The app deliberately never lets an LLM
 > author a religious answer on a scholar's behalf — the AI only retrieves
 > and points to what the scholar themselves has already said. do not belive untill
-> you checked the citations and complete video to now whole context.
+> you checked the citations and complete video to know whole context.
 
 **🌐 Try it live:** **[ask-scholar-frontend.vercel.app](https://ask-scholar-frontend.vercel.app/)**
 
