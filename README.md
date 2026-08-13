@@ -49,21 +49,9 @@ answer already exists, instead of a generic AI-generated response.
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────┐        ┌──────────────────────────┐
-│   Frontend (React+Vite)  │ ─────▶ │   Backend (FastAPI)       │
-│   ask-scholar-frontend    │  API   │   /api/* on Vercel/Render │
-│   .vercel.app              │◀───── │                            │
-└─────────────────────────┘        └──────────┬───────────────┘
-                                                │
-                        ┌───────────────────────┼───────────────────────┐
-                        ▼                       ▼                       ▼
-                ┌───────────────┐     ┌──────────────────┐    ┌──────────────────┐
-                │   Supabase     │     │  Google Gemini     │    │    Pinecone        │
-                │  (Postgres +   │     │  (transcription,    │    │  (vector search    │
-                │   Storage)     │     │   embeddings)         │    │   for RAG)          │
-                └───────────────┘     └──────────────────┘    └──────────────────┘
-```
+<p align="center">
+  <img src="docs/arch.png" alt="Ask Scholar System Architecture" width="900"/>
+</p>
 
 The **frontend** is a standalone React/Vite app deployed on Vercel and talks
 to the **backend** purely over its REST API (`VITE_API_BASE_URL`). The
