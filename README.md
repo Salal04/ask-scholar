@@ -4,7 +4,7 @@
 
 **Ask a verified religious scholar — get answers grounded in their own videos and writings.**
 
-### 🔗 [**Live App → ask-scholar-frontend.vercel.app**](https://ask-scholar-frontend.vercel.app/)
+### 🔗 [**Live App → ask-scholars.vercel.app/**](https://ask-scholars.vercel.app/)
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://ask-scholar-frontend.vercel.app/)
 [![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#-frontend)
