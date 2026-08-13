@@ -37,7 +37,11 @@ import uuid
 from pathlib import Path
 from typing import Dict, List
 
-import yt_dlp
+try:
+    import yt_dlp
+except ImportError:  # not installed on this environment (e.g. Vercel) — that's fine,
+    # YouTube ingestion just isn't available there. See download_audio() below.
+    yt_dlp = None
 from pydantic import BaseModel
 
 from .. import config
@@ -136,6 +140,13 @@ def _try_pytubefix(url: str, video_id: str) -> None:
 
 
 def download_audio(url: str) -> Path:
+    if yt_dlp is None:
+        raise RuntimeError(
+            "YouTube ingestion is not available on this deployment (yt-dlp is not "
+            "installed here). Run ingestion from your local machine / a host that "
+            "has yt-dlp + ffmpeg installed instead."
+        )
+
     video_id = _extract_video_id(url)
     out_template = str(config.TMP_DIR / f"{video_id}.%(ext)s")
     audio_path = config.TMP_DIR / f"{video_id}.mp3"
