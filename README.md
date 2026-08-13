@@ -50,7 +50,7 @@ answer already exists, instead of a generic AI-generated response.
 ## 🏗️ Architecture
 
 <p align="center">
-  <img src="docs/arch.png" alt="Ask Scholar System Architecture" width="900"/>
+  <img src="arch.png" alt="Ask Scholar System Architecture" width="900"/>
 </p>
 
 The **frontend** is a standalone React/Vite app deployed on Vercel and talks
