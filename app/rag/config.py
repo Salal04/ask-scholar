@@ -5,6 +5,7 @@ All secrets are read from environment variables (see .env.example).
 """
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -128,10 +129,34 @@ ANSWER_RETRIEVAL_TOP_K = int(os.getenv("ANSWER_RETRIEVAL_TOP_K", "6"))
 # app/rag/config.py -> app/rag -> app -> project root (3 parents up, since
 # this module now lives one level deeper than the original rag-backend/app/).
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-TMP_DIR = BASE_DIR / "tmp_downloads"
-TMP_DIR.mkdir(exist_ok=True)
 
-MODEL_STATE_PATH = BASE_DIR / "model_state.json"
+# On serverless platforms (Vercel, AWS Lambda, ...) everything except /tmp is
+# read-only, so any file this app writes (downloaded audio, ingest_state.json,
+# model_state.json) has to live there instead of next to the code. Set
+# RAG_WRITABLE_DIR explicitly if you want a specific location; otherwise we
+# probe BASE_DIR and fall back to the OS temp dir if it isn't writable.
+# Note: on serverless, /tmp is wiped between cold starts, so resumable
+# ingestion state won't persist there long-term — that's expected, since
+# YouTube ingestion isn't meant to run on Vercel anyway (see
+# services/youtube_service.py). This just keeps the app from crashing.
+_writable_override = os.getenv("RAG_WRITABLE_DIR")
+if _writable_override:
+    WRITABLE_DIR = Path(_writable_override)
+    WRITABLE_DIR.mkdir(exist_ok=True, parents=True)
+else:
+    try:
+        BASE_DIR.mkdir(exist_ok=True)
+        _probe = BASE_DIR / ".write_test"
+        _probe.touch()
+        _probe.unlink()
+        WRITABLE_DIR = BASE_DIR
+    except OSError:
+        WRITABLE_DIR = Path(tempfile.gettempdir())
+
+TMP_DIR = WRITABLE_DIR / "tmp_downloads"
+TMP_DIR.mkdir(exist_ok=True, parents=True)
+
+MODEL_STATE_PATH = WRITABLE_DIR / "model_state.json"
 
 
 def _load_model_state():
